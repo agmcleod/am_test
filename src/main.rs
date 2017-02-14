@@ -11,11 +11,7 @@ use amethyst::renderer::{Pipeline, VertexPosNormal};
 mod entities;
 mod rect;
 
-static CLIP_COORDINATES_SCALE: f32 = 100.0;
-
-struct Game {
-    pixels_to_units: f32,
-}
+struct Game;
 
 impl State for Game {
     fn on_start(&mut self, world: &mut World, assets: &mut AssetManager, pipe: &mut Pipeline) {
@@ -33,16 +29,16 @@ impl State for Game {
             let dim = world.read_resource::<ScreenDimensions>();
             let mut camera = world.write_resource::<Camera>();
             let aspect_ratio = dim.aspect_ratio;
-            let eye = [0., 0., 0.1];
-            let target = [0., 0., 0.];
+            let eye = [dim.w / 2.0, dim.h / 2.0, 0.1];
+            let target = [dim.w / 2.0, dim.h / 2.0, 0.];
             let up = [0., 1., 0.];
 
             // Get an Orthographic projection
             let proj = Projection::Orthographic {
-                left: -CLIP_COORDINATES_SCALE / 2.0 * aspect_ratio,
-                right: CLIP_COORDINATES_SCALE / 2.0 * aspect_ratio,
-                bottom: -CLIP_COORDINATES_SCALE / 2.0,
-                top: CLIP_COORDINATES_SCALE / 2.0,
+                left: -dim.w / 2.0 * aspect_ratio,
+                right: dim.w / 2.0 * aspect_ratio,
+                bottom: -dim.h / 2.0,
+                top: dim.h / 2.0,
                 near: 0.0,
                 far: 1.0,
             };
@@ -92,7 +88,7 @@ fn main() {
     let path = format!("{}/resources/config.yml", env!("CARGO_MANIFEST_DIR"));
     let cfg = DisplayConfig::from_file(path).unwrap();
 
-    let mut game = Application::build(Game{ pixels_to_units: 0.0 }, cfg)
+    let mut game = Application::build(Game{}, cfg)
         .register::<entities::Player>()
         .done();
 
