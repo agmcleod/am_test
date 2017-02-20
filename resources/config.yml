@@ -1,6 +1,4 @@
-dimensions:
-  - 800
-  - 600
+dimensions: null
 fullscreen: false
 max_dimensions: null
 min_dimensions: null

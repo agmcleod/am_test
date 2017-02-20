@@ -35,8 +35,8 @@ impl State for Game {
 
             // Get an Orthographic projection
             let proj = Projection::Orthographic {
-                left: -dim.w / 2.0 * aspect_ratio,
-                right: dim.w / 2.0 * aspect_ratio,
+                left: -dim.w / 2.0,
+                right: dim.w / 2.0,
                 bottom: -dim.h / 2.0,
                 top: dim.h / 2.0,
                 near: 0.0,
@@ -85,7 +85,7 @@ impl State for Game {
 }
 
 fn main() {
-    let path = format!("{}/resources/config.yml", env!("CARGO_MANIFEST_DIR"));
+    let path = "./resources/config.yml";
     let cfg = DisplayConfig::from_file(path).unwrap();
 
     let mut game = Application::build(Game{}, cfg)
