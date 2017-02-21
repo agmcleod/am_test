@@ -5,3 +5,4 @@ authors = ["Aaron McLeod <aaron.g.mcleod@gmail.com>"]
 
 [dependencies]
 amethyst = "0.4.1"
+tiled = "0.3.0"

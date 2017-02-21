@@ -1,12 +1,13 @@
 # agile archer
 
-Agile archer is a 2d game at side scroller perspective. The mechanic will be using a sequence of gestures and input to complete a sequence of moves, dodges and shooting of arrows. The idea will be to allow variety in approach. This will be to take out enemies. The groups of enemies will be in stages, with different set layouts, and will come from all sorts of angles. Ideally these should be designed random, so a lot of hardcoded levels do not have to be made.
+Agile archer is a 2d game at side scroller perspective. The game will feature turn based mechanics, with moves taking up a finite amount of energy. So you can do as much in a turn as you want.
+The idea will be to allow variety in approach, while still having a fair pace. The groups of enemies will be in stages, with different set layouts, and will come from all sorts of angles.
 
-- Single frame/no camera layouts
-- Designed levels
-- Perma death
-- Combat is a series of moves. Each move equates to an enemy move. This game includes. Moving to get in position. Time cost will be determined, but thinking 1/3rd of screen is 1 move.
-- Plan and execute, or one step at a time are both viable
+- Single frame, arena style to start with. Move towards standard platform/sidescroller camera after.
+- Designed levels, potentially some randomness here too
+- Possibly perma death. It depends on if I want to have a beginning, middle and end.
+- Ray tracing path finding
+- Combat will be unit selective. Using abilities and such to be more efficient.
 
 ## Enemies
 
@@ -16,9 +17,11 @@ Agile archer is a 2d game at side scroller perspective. The mechanic will be usi
 
 ## Unlocks/Progression
 
-- Melee attack.
+- Slide
+- Block/Deflect, cool down
 - Auto aim arrows. Cool down
 - Fire two arrows at once, cool down
+- Stop time?
 
 ## Art
 
@@ -28,5 +31,3 @@ Agile archer is a 2d game at side scroller perspective. The mechanic will be usi
 ## Monetization
 
 - pay up front
-- Skins possibly
-- Any skins will be free on desktop platforms, with a higher upfront cost.

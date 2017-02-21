@@ -1,17 +1,24 @@
 extern crate amethyst;
+extern crate tiled;
 
 use amethyst::{Application, Event, State, Trans, VirtualKeyCode, WindowEvent};
-use amethyst::asset_manager::AssetManager;
+use amethyst::asset_manager::{AssetManager, DirectoryStore};
 use amethyst::config::Element;
 use amethyst::ecs::{World, Join, RunArg, System};
 use amethyst::ecs::components::{Mesh, LocalTransform, Texture, Transform};
 use amethyst::gfx_device::DisplayConfig;
 use amethyst::renderer::{Pipeline, VertexPosNormal};
 
+use std::path::Path;
+use std::fs::File;
+use tiled::parse;
+
 mod entities;
 mod rect;
 
-struct Game;
+struct Game {
+    map: tiled::Map,
+}
 
 impl State for Game {
     fn on_start(&mut self, world: &mut World, assets: &mut AssetManager, pipe: &mut Pipeline) {
@@ -55,6 +62,15 @@ impl State for Game {
         assets.load_asset_from_data::<Texture, [f32; 4]>("white", [1.0, 1.0, 1.0, 1.0]);
         assets.load_asset_from_data::<Mesh, Vec<VertexPosNormal>>("player", entities::Player::get_renderable_verts());
 
+        assets.register_store(DirectoryStore::new("./resources"));
+
+        for tileset in self.map.tilesets.iter() {
+            for image in tileset.images.iter() {
+                let parts = image.source.split(".").collect::<Vec<&str>>();
+                assets.load_asset::<Texture>(parts[0], parts[1]);
+            }
+        }
+
         let square = assets.create_renderable("player", "white", "white", "white", 1.0).unwrap();
 
         let player = entities::Player::new();
@@ -88,7 +104,10 @@ fn main() {
     let path = "./resources/config.yml";
     let cfg = DisplayConfig::from_file(path).unwrap();
 
-    let mut game = Application::build(Game{}, cfg)
+    let map_file = File::open(&Path::new("./resources/map.tmx")).unwrap();
+    let map = parse(map_file).unwrap();
+
+    let mut game = Application::build(Game{ map: map }, cfg)
         .register::<entities::Player>()
         .done();
 

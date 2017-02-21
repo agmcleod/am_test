@@ -20,7 +20,7 @@ impl Player {
     }
 
     pub fn get_renderable_verts() -> Vec<VertexPosNormal> {
-        rect::gen_rectangle(10.0, 10.0)
+        rect::gen_rectangle(32.0, 64.0)
     }
 }
 
