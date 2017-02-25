@@ -27,7 +27,7 @@ impl State for Game {
         use amethyst::ecs::resources::{Camera, InputHandler, Projection, ScreenDimensions};
         use amethyst::renderer::Layer;
         use amethyst::renderer::pass::{Clear, DrawFlat};
-
+        use gfx::Factory;
         use amethyst::gfx_device::gfx_types;
 
         world.add_resource::<InputHandler>(InputHandler::new());
