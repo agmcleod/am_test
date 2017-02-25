@@ -1,5 +1,6 @@
 extern crate amethyst;
 extern crate tiled;
+extern crate gfx;
 
 use amethyst::{Application, Event, State, Trans, VirtualKeyCode, WindowEvent};
 use amethyst::asset_manager::{AssetManager, DirectoryStore};
@@ -13,6 +14,7 @@ use std::path::Path;
 use std::fs::File;
 use tiled::parse;
 
+mod loader;
 mod entities;
 mod rect;
 
@@ -25,6 +27,8 @@ impl State for Game {
         use amethyst::ecs::resources::{Camera, InputHandler, Projection, ScreenDimensions};
         use amethyst::renderer::Layer;
         use amethyst::renderer::pass::{Clear, DrawFlat};
+
+        use amethyst::gfx_device::gfx_types;
 
         world.add_resource::<InputHandler>(InputHandler::new());
 
@@ -66,8 +70,8 @@ impl State for Game {
 
         for tileset in self.map.tilesets.iter() {
             for image in tileset.images.iter() {
-                let parts = image.source.split(".").collect::<Vec<&str>>();
-                assets.load_asset::<Texture>(parts[0], parts[1]);
+                let mut factory = assets.get_loader_mut::<gfx_types::Factory>().unwrap();
+                let tiles_texture = loader::gfx_load_texture(&mut factory, &image.source);
             }
         }
 

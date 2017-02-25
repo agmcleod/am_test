@@ -6,3 +6,6 @@ authors = ["Aaron McLeod <aaron.g.mcleod@gmail.com>"]
 [dependencies]
 amethyst = "0.4.1"
 tiled = "0.3.0"
+image = "0.12.3"
+gfx = "0.14"
+gfx_device_gl = "0.13"
