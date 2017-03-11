@@ -1,5 +1,6 @@
 extern crate amethyst;
 extern crate tiled;
+#[macro_use]
 extern crate gfx;
 
 use amethyst::{Application, Event, State, Trans, VirtualKeyCode, WindowEvent};
@@ -17,6 +18,7 @@ use tiled::parse;
 mod loader;
 mod entities;
 mod rect;
+mod rendering;
 
 struct Game {
     map: tiled::Map,
@@ -27,7 +29,6 @@ impl State for Game {
         use amethyst::ecs::resources::{Camera, InputHandler, Projection, ScreenDimensions};
         use amethyst::renderer::Layer;
         use amethyst::renderer::pass::{Clear, DrawFlat};
-        use gfx::Factory;
         use amethyst::gfx_device::gfx_types;
 
         world.add_resource::<InputHandler>(InputHandler::new());
@@ -71,7 +72,7 @@ impl State for Game {
         for tileset in self.map.tilesets.iter() {
             for image in tileset.images.iter() {
                 let mut factory = assets.get_loader_mut::<gfx_types::Factory>().unwrap();
-                let tiles_texture = loader::gfx_load_texture(&mut factory, &image.source);
+                let tiles_texture = loader::gfx_load_texture(factory, &image.source);
             }
         }
 
