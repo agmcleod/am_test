@@ -1,14 +1,23 @@
 extern crate gfx;
 extern crate amethyst;
 extern crate tiled;
+extern crate genmesh;
 
 use amethyst::renderer::pass::{DrawFlat, Pass};
 use amethyst::renderer::{Pipeline, Scene};
-use amethyst::renderer::target::GeometryBuffer;
+use amethyst::renderer::target::{GeometryBuffer};
+use amethyst::gfx_device::MainTarget;
 
 use rendering::{ColorFormat, DepthFormat};
 
 use gfx::traits::FactoryExt;
+use genmesh::generators::Plane;
+use loader;
+
+// this is a value based on a max buffer size (and hence tilemap size) of 64x64
+// I imagine you would have a max buffer length, with multiple TileMap instances
+// of varying sizes based on current screen resolution
+pub const TILEMAP_BUF_LENGTH: usize = 4096;
 
 // Actual tilemap data that makes up the elements of the UBO.
 // NOTE: It may be a bug, but it appears that
@@ -44,8 +53,8 @@ gfx_defines!{
         tilemap_cb: gfx::ConstantBuffer<TilemapStuff> = "b_PsLocals",
         tilesheet: gfx::TextureSampler<[f32; 4]> = "t_TileSheet",
         // output
-        out_color: gfx::RenderTarget<ColorFormat> = "Target0",
-        out_depth: gfx::DepthTarget<DepthFormat> =
+        out_color: gfx::RenderTarget<gfx::format::Rgba8> = "Target0",
+        out_depth: gfx::DepthTarget<gfx::format::DepthStencil> =
             gfx::preset::depth::LESS_EQUAL_WRITE,
     }
 }
@@ -59,7 +68,7 @@ impl TileMapData {
     }
 }
 
-pub struct TileMapPlane<R> where R: gfx::Resources {
+pub struct TileMapPlane<R: gfx::Resources> {
     pub params: pipe::Data<R>,
     pub slice: gfx::Slice<R>,
     proj_stuff: ProjectionStuff,
@@ -69,12 +78,51 @@ pub struct TileMapPlane<R> where R: gfx::Resources {
     pub data: Vec<TileMapData>,
 }
 
-impl<R> TileMapPlane<R> where R: gfx::Resources {
-    pub fn new<F>(factory: &mut F, tilemap: &tiled::Map) -> TileMapPlane<R> where F: gfx::Factory<R> {
+impl<R: gfx::Resources> TileMapPlane<R> {
+    pub fn new<F>(factory: &mut F, tilemap: &tiled::Map, target: MainTarget) -> TileMapPlane<R> where F: gfx::Factory<R> {
         let half_width = (tilemap.width * tilemap.tile_width) / 2;
         let half_height = (tilemap.height * tilemap.tile_height) / 2;
 
         let total_size = tilemap.width * tilemap.height;
+
+        let plane = Plane::subdivide(tilemap.width, tilemap.height);
+
+        let vertex_data: Vec<VertexData> = plane.shared_vertex_iter().map(|(raw_x, raw_y)| {
+            let vertex_x = half_width as f32 * raw_x;
+            let vertex_y = half_height as f32 * raw_y;
+
+            let u_pos = (1.0 + raw_x) / 2.0;
+            let v_pos = (1.0 + raw_y) / 2.0;
+            let tilemap_x = (u_pos * tilemap.width as f32).floor();
+            let tilemap_y = (v_pos * tilemap.height as f32).floor();
+
+            VertexData {
+                pos: [vertex_x, vertex_y, 0.0],
+                buf_pos: [tilemap_x as f32, tilemap_y as f32]
+            }
+        }).collect();
+
+        let index_data: Vec<u32> = plane.indexed_polygon_iter()
+            .triangulate()
+            .vertices()
+            .map(|i| i as u32)
+            .collect();
+
+        let (vbuf, slice) = factory.create_vertex_buffer_with_slice(&vertex_data, &index_data[..]);
+
+        let tileset = tilemap.tilesets.get(0).unwrap(); // working under the assumption i will only use one tileset
+        let image = tileset.images.get(0).unwrap();
+        let tiles_texture = loader::gfx_load_texture(factory, &image.source);
+
+        let params = pipe::Data {
+            vbuf: vbuf,
+            projection_cb: factory.create_constant_buffer(1),
+            tilemap: factory.create_constant_buffer(TILEMAP_BUF_LENGTH),
+            tilemap_cb: factory.create_constant_buffer(1),
+            tilesheet: (tiles_texture, factory.create_sampler_linear()),
+            out_color: target.color.clone(),
+            out_depth: target.depth.clone(),
+        };
 
         TileMapPlane{
 

@@ -69,13 +69,6 @@ impl State for Game {
 
         assets.register_store(DirectoryStore::new("./resources"));
 
-        for tileset in self.map.tilesets.iter() {
-            for image in tileset.images.iter() {
-                let mut factory = assets.get_loader_mut::<gfx_types::Factory>().unwrap();
-                let tiles_texture = loader::gfx_load_texture(factory, &image.source);
-            }
-        }
-
         let square = assets.create_renderable("player", "white", "white", "white", 1.0).unwrap();
 
         let player = entities::Player::new();

@@ -7,6 +7,7 @@ authors = ["Aaron McLeod <aaron.g.mcleod@gmail.com>"]
 amethyst = "0.4.1"
 tiled = "0.4.0"
 image = "0.12.3"
+genmesh = "0.4"
 gfx = "0.14"
 gfx_device_gl = "0.13"
 cgmath = "0.12.0"
