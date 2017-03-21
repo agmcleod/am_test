@@ -2,17 +2,25 @@ extern crate gfx;
 extern crate amethyst;
 extern crate tiled;
 extern crate genmesh;
+extern crate cgmath;
 
 use amethyst::renderer::pass::{DrawFlat, Pass};
 use amethyst::renderer::{Pipeline, Scene};
 use amethyst::renderer::target::{GeometryBuffer};
-use amethyst::gfx_device::MainTarget;
+use amethyst::gfx_device;
+use amethyst::gfx_device::gfx_types;
 
+use rendering;
 use rendering::{ColorFormat, DepthFormat};
 
 use gfx::traits::FactoryExt;
-use genmesh::generators::Plane;
+use genmesh::{Vertices, Triangulate};
+use genmesh::generators::{Plane, SharedVertex, IndexedPolygon};
 use loader;
+
+use cgmath::{SquareMatrix, Matrix4, AffineMatrix3};
+use cgmath::{Point3, Vector3};
+use cgmath::{Transform};
 
 // this is a value based on a max buffer size (and hence tilemap size) of 64x64
 // I imagine you would have a max buffer length, with multiple TileMap instances
@@ -79,13 +87,13 @@ pub struct TileMapPlane<R: gfx::Resources> {
 }
 
 impl<R: gfx::Resources> TileMapPlane<R> {
-    pub fn new<F>(factory: &mut F, tilemap: &tiled::Map, target: MainTarget) -> TileMapPlane<R> where F: gfx::Factory<R> {
+    pub fn new<F>(factory: &mut F, tilemap: &tiled::Map, aspect_ratio: f32 , target: rendering::Target<R>) -> TileMapPlane<R> where F: gfx::Factory<R> {
         let half_width = (tilemap.width * tilemap.tile_width) / 2;
         let half_height = (tilemap.height * tilemap.tile_height) / 2;
 
         let total_size = tilemap.width * tilemap.height;
 
-        let plane = Plane::subdivide(tilemap.width, tilemap.height);
+        let plane = Plane::subdivide(tilemap.width as usize, tilemap.height as usize);
 
         let vertex_data: Vec<VertexData> = plane.shared_vertex_iter().map(|(raw_x, raw_y)| {
             let vertex_x = half_width as f32 * raw_x;
@@ -124,8 +132,28 @@ impl<R: gfx::Resources> TileMapPlane<R> {
             out_depth: target.depth.clone(),
         };
 
-        TileMapPlane{
+        // TODO: change the coords here
+        let view: AffineMatrix3<f32> = Transform::look_at(
+            Point3::new(0.0, 0.0, 800.0),
+            Point3::new(0.0, 0.0, 0.0),
+            Vector3::unit_y(),
+        );
 
+        TileMapPlane{
+            slice: slice,
+            params: params,
+            proj_stuff: ProjectionStuff {
+                model: Matrix4::identity().into(),
+                view: view.mat.into(),
+                proj: cgmath::perspective(cgmath::deg(60.0f32), aspect_ratio, 0.1, 4000.0).into(),
+            },
+            proj_dirty: true,
+            tm_stuff: TilemapStuff{
+                world_size: [tilemap.width as f32, tilemap.height as f32, tilemap.tile_width as f32, 0.0],
+                tilesheet_size: [tileset.tile_width as f32, tileset.tile_height as f32, tileset.images[0].width as f32, tileset.images[0].height as f32],
+                offsets: [0.0, 0.0],
+            },
+            tm_dirty: true,
         }
     }
 }

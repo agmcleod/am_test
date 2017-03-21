@@ -1,5 +1,7 @@
 extern crate amethyst;
 extern crate tiled;
+extern crate cgmath;
+extern crate genmesh;
 #[macro_use]
 extern crate gfx;
 
