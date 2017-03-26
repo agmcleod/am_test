@@ -139,6 +139,11 @@ impl<R: gfx::Resources> TileMapPlane<R> {
             Vector3::unit_y(),
         );
 
+        let mut map_data = Vec::with_capacity(total_size as usize);
+        for _ in 0..total_size {
+            map_data.push(TileMapData::new_empty());
+        }
+
         TileMapPlane{
             slice: slice,
             params: params,
@@ -154,6 +159,7 @@ impl<R: gfx::Resources> TileMapPlane<R> {
                 offsets: [0.0, 0.0],
             },
             tm_dirty: true,
+            data: map_data,
         }
     }
 }
