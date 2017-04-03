@@ -162,6 +162,156 @@ impl<R: gfx::Resources> TileMapPlane<R> {
             data: map_data,
         }
     }
+
+    fn prepare_buffers<C>(&mut self, encoder: &mut gfx::Encoder<R, C>, update_data: bool) where C: gfx::CommandBuffer<R> {
+        if update_data {
+            encoder.update_buffer(&self.params.tilemap, &self.data, 0).unwrap();
+        }
+        if self.proj_dirty {
+            encoder.update_constant_buffer(&self.params.projection_cb, &self.proj_stuff);
+            self.proj_dirty = false;
+        }
+        if self.tm_dirty {
+            encoder.update_constant_buffer(&self.params.tilemap_cb, &self.tm_stuff);
+            self.tm_dirty = false;
+        }
+    }
+
+    fn clear<C>(&self, encoder: &mut gfx::Encoder<R, C>) where C: gfx::CommandBuffer<R> {
+        encoder.clear(&self.params.out_color,
+            [0.0, 0.0, 0.0, 1.0]);
+        encoder.clear_depth(&self.params.out_depth, 1.0);
+    }
+
+    pub fn update_x_offset(&mut self, amt: f32) {
+        self.tm_stuff.offsets[0] = amt;
+        self.tm_dirty = true;
+    }
+
+    pub fn update_y_offset(&mut self, amt: f32) {
+        self.tm_stuff.offsets[1] = amt;
+        self.tm_dirty = true;
+    }
+}
+
+fn populate_tilemap<R>(tilemap: &mut TileMap<R>, map_data: &tiled::Map) where R: gfx::Resources {
+    let layers = &map_data.layers;
+    for layer in layers {
+        for (row, cols) in layer.tiles.iter().enumerate() {
+            for col in cols {
+                if *col != 0 {
+                    for tileset in map_data.tilesets.iter() {
+                        let image = &tileset.images[0];
+                        if tileset.first_gid as usize + tileset.tiles.len() - 1 <= *col as usize {
+                            let x = (*col as f32 * tilemap.tile_size) % image.width as f32;
+                            let y = (row as f32 * tilemap.tile_size) % image.height as f32;
+                            tilemap.set_tile(*col as usize, row, [x, y, 0.0, 0.0]);
+                            break
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub struct TileMap<R> where R: gfx::Resources {
+    pub tiles: Vec<TileMapData>,
+    pso: gfx::PipelineState<R, pipe::Meta>,
+    tilemap_plane: TileMapPlane<R>,
+    tile_size: f32,
+    tilemap_size: [usize; 2],
+    charmap_size: [usize; 2],
+    limit_coords: [usize; 2],
+    focus_coords: [usize; 2],
+    focus_dirty: bool,
+}
+
+impl <R: gfx::Resources> TileMap<R> {
+    pub fn set_focus(&mut self, focus: [usize; 2]) {
+        if focus[0] <= self.limit_coords[0] && focus[1] <= self.limit_coords[1] {
+            self.focus_coords = focus;
+            let mut charmap_ypos = 0;
+            for ypos in self.focus_coords[1] .. self.focus_coords[1]+self.charmap_size[1] {
+                let mut charmap_xpos = 0;
+                for xpos in self.focus_coords[0] .. self.focus_coords[0]+self.charmap_size[0] {
+                    let tile_idx = (ypos * self.tilemap_size[0]) + xpos;
+                    let charmap_idx = (charmap_ypos * self.charmap_size[0]) + charmap_xpos;
+                    self.tilemap_plane.data[charmap_idx] = self.tiles[tile_idx];
+                    charmap_xpos += 1;
+                }
+                charmap_ypos += 1;
+            }
+            self.focus_dirty = true;
+        } else {
+            panic!("tried to set focus to {:?} with tilemap_size of {:?}", focus, self.tilemap_size);
+        }
+    }
+
+    pub fn apply_x_offset(&mut self, offset_amt: f32) {
+        let mut new_offset = self.tilemap_plane.tm_stuff.offsets[0] + offset_amt;
+        let curr_focus = self.focus_coords;
+        let new_x = if new_offset < 0.0 {
+            // move down
+            if self.focus_coords[0] == 0 {
+                new_offset = 0.0;
+                0
+            } else {
+                new_offset = self.tile_size + new_offset as f32;
+                self.focus_coords[0] - 1
+            }
+        } else if self.focus_coords[0] == self.limit_coords[0] {
+            // at top, no more offset
+            new_offset = 0.0;
+            self.focus_coords[0]
+        } else if new_offset >= self.tile_size {
+            new_offset = new_offset - self.tile_size as f32;
+            self.focus_coords[0] + 1
+        } else {
+            // no move
+            self.focus_coords[0]
+        };
+        if new_x != self.focus_coords[0] {
+            self.set_focus([new_x, curr_focus[1]]);
+        }
+        self.tilemap_plane.update_x_offset(new_offset);
+    }
+    pub fn apply_y_offset(&mut self, offset_amt: f32) {
+        let mut new_offset = self.tilemap_plane.tm_stuff.offsets[1] + offset_amt;
+        let curr_focus = self.focus_coords;
+        let new_y = if new_offset < 0.0 {
+            // move down
+            if self.focus_coords[1] == 0 {
+                new_offset = 0.0;
+                0
+            } else {
+                new_offset = self.tile_size + new_offset as f32;
+                self.focus_coords[1] - 1
+            }
+        } else if self.focus_coords[1] == (self.tilemap_size[1] - self.charmap_size[1]) {
+            // at top, no more offset
+            new_offset = 0.0;
+            self.focus_coords[1]
+        } else if new_offset >= self.tile_size {
+            new_offset = new_offset - self.tile_size as f32;
+            self.focus_coords[1] + 1
+        } else {
+            // no move
+            self.focus_coords[1]
+        };
+        if new_y != self.focus_coords[1] {
+            self.set_focus([curr_focus[0], new_y]);
+        }
+        self.tilemap_plane.update_y_offset(new_offset);
+    }
+
+    fn calc_idx(&self, xpos: usize, ypos: usize) -> usize {
+        (ypos * self.tilemap_size[0]) + xpos
+    }
+    pub fn set_tile(&mut self, xpos: usize, ypos: usize, data: [f32; 4]) {
+        let idx = self.calc_idx(xpos, ypos);
+        self.tiles[idx] = TileMapData::new(data);
+    }
 }
 
 pub struct DrawPass<R: gfx::Resources> {
@@ -169,11 +319,12 @@ pub struct DrawPass<R: gfx::Resources> {
     tilemap_stuff: gfx::handle::Buffer<R, TilemapStuff>,
     tilemap_data: gfx::handle::Buffer<R, TileMapData>,
     tilesheet_sampler: gfx::handle::Sampler<R>,
+    tilemap: TileMap<R>,
     pso: gfx::PipelineState<R, pipe::Meta>,
 }
 
 impl<R: gfx::Resources> DrawPass<R> {
-    pub fn new<F>(factory: &mut F) -> DrawPass<R>
+    pub fn new<F>(tilemap: TileMap<R>, factory: &mut F) -> DrawPass<R>
         where F: gfx::Factory<R>
     {
         let sampler = factory.create_sampler(
@@ -191,6 +342,7 @@ impl<R: gfx::Resources> DrawPass<R> {
             tilemap_stuff: factory.create_constant_buffer(1),
             tilemap_data: factory.create_constant_buffer(1),
             tilesheet_sampler: sampler,
+            tilemap: tilemap,
             pso: factory.create_pipeline_simple(vert_src, frag_src, pipe::new()).unwrap(),
         }
     }
@@ -217,6 +369,13 @@ impl<R> Pass<R> for DrawPass<R>
             view: scene.camera.view,
         });
 
-        encoder.draw()
+        let tilemap = self.tilemap;
+
+        tilemap.tilemap_plane.prepare_buffers(encoder, self.tilemap.focus_dirty);
+        tilemap.focus_dirty = false;
+
+        tilemap.tilemap_plane.clear(encoder);
+
+        encoder.draw(&tilemap.tilemap_plane.slice, &self.pso, &tilemap.tilemap_plane.params);
     }
 }
