@@ -87,7 +87,7 @@ pub struct TileMapPlane<R: gfx::Resources> {
 }
 
 impl<R: gfx::Resources> TileMapPlane<R> {
-    pub fn new<F>(factory: &mut F, tilemap: &tiled::Map, aspect_ratio: f32 , target: rendering::Target<R>) -> TileMapPlane<R> where F: gfx::Factory<R> {
+    pub fn new<F>(factory: &mut F, tilemap: &tiled::Map, aspect_ratio: f32 , target: &rendering::Target<R>) -> TileMapPlane<R> where F: gfx::Factory<R> {
         let half_width = (tilemap.width * tilemap.tile_width) / 2;
         let half_height = (tilemap.height * tilemap.tile_height) / 2;
 
@@ -177,12 +177,6 @@ impl<R: gfx::Resources> TileMapPlane<R> {
         }
     }
 
-    fn clear<C>(&self, encoder: &mut gfx::Encoder<R, C>) where C: gfx::CommandBuffer<R> {
-        encoder.clear(&self.params.out_color,
-            [0.0, 0.0, 0.0, 1.0]);
-        encoder.clear_depth(&self.params.out_depth, 1.0);
-    }
-
     pub fn update_x_offset(&mut self, amt: f32) {
         self.tm_stuff.offsets[0] = amt;
         self.tm_dirty = true;
@@ -228,6 +222,33 @@ pub struct TileMap<R> where R: gfx::Resources {
 }
 
 impl <R: gfx::Resources> TileMap<R> {
+    pub fn new<F>(map: &tiled::Map, factory: &mut F, aspect_ratio: f32, target: &rendering::Target<R>) -> TileMap<R>
+        where F: gfx::Factory<R>
+    {
+        let mut tiles = Vec::with_capacity((map.width * map.height) as usize);
+        for _ in 0..(map.width * map.height) {
+            tiles.push(TileMapData::new_empty());
+        }
+
+        TileMap {
+            tiles: tiles,
+            pso: factory.create_pipeline_simple(
+                include_bytes!("shader/tilemap_150.glslv"),
+                include_bytes!("shader/tilemap_150.glslf"),
+                pipe::new()
+            ).unwrap(),
+            tilemap_plane: TileMapPlane::new(
+                factory, map, aspect_ratio, target
+            ),
+            tile_size: map.tile_width as f32,
+            tilemap_size: [map.width as usize, map.height as usize],
+            charmap_size: [map.width as usize, map.height as usize],
+            limit_coords: [0, 0],
+            focus_coords: [0, 0],
+            focus_dirty: false,
+        }
+    }
+
     pub fn set_focus(&mut self, focus: [usize; 2]) {
         if focus[0] <= self.limit_coords[0] && focus[1] <= self.limit_coords[1] {
             self.focus_coords = focus;
@@ -314,7 +335,7 @@ impl <R: gfx::Resources> TileMap<R> {
     }
 }
 
-pub struct DrawPass<R: gfx::Resources> {
+pub struct MapDrawPass<R: gfx::Resources> {
     projection: gfx::handle::Buffer<R, ProjectionStuff>,
     tilemap_stuff: gfx::handle::Buffer<R, TilemapStuff>,
     tilemap_data: gfx::handle::Buffer<R, TileMapData>,
@@ -323,8 +344,8 @@ pub struct DrawPass<R: gfx::Resources> {
     pso: gfx::PipelineState<R, pipe::Meta>,
 }
 
-impl<R: gfx::Resources> DrawPass<R> {
-    pub fn new<F>(tilemap: TileMap<R>, factory: &mut F) -> DrawPass<R>
+impl<R: gfx::Resources> MapDrawPass<R> {
+    pub fn new<F>(tilemap: TileMap<R>, factory: &mut F) -> MapDrawPass<R>
         where F: gfx::Factory<R>
     {
         let sampler = factory.create_sampler(
@@ -337,7 +358,7 @@ impl<R: gfx::Resources> DrawPass<R> {
         let vert_src = include_bytes!("shader/tilemap_150.glslv");
         let frag_src = include_bytes!("shader/tilemap_150.glslf");
 
-        DrawPass {
+        MapDrawPass {
             projection: factory.create_constant_buffer(1),
             tilemap_stuff: factory.create_constant_buffer(1),
             tilemap_data: factory.create_constant_buffer(1),
@@ -348,7 +369,7 @@ impl<R: gfx::Resources> DrawPass<R> {
     }
 }
 
-impl<R> Pass<R> for DrawPass<R>
+impl<R> Pass<R> for MapDrawPass<R>
     where R: gfx::Resources
 {
     type Arg = DrawFlat;
@@ -373,8 +394,6 @@ impl<R> Pass<R> for DrawPass<R>
 
         tilemap.tilemap_plane.prepare_buffers(encoder, self.tilemap.focus_dirty);
         tilemap.focus_dirty = false;
-
-        tilemap.tilemap_plane.clear(encoder);
 
         encoder.draw(&tilemap.tilemap_plane.slice, &self.pso, &tilemap.tilemap_plane.params);
     }
