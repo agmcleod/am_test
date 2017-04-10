@@ -41,7 +41,7 @@ impl State for Game {
         let factory = assets.get_loader_mut::<gfx_types::Factory>()
             .expect("Couldn't retrieve factory.");
 
-        let main_target: &Box<ColorBuffer> = pipe.targets.get("main").unwrap();
+        let main_target: &Box<ColorBuffer<amethyst::gfx_device::gfx_types::Resources>> = pipe.targets.get("main").unwrap();
 
         let dimensions = self.cfg.dimensions.unwrap();
         let target = rendering::Target{
