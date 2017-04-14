@@ -4,11 +4,15 @@ extern crate tiled;
 extern crate genmesh;
 extern crate cgmath;
 
+use std::fmt;
+use std::fmt::{Debug, Formatter};
+
 use amethyst::renderer::pass::{DrawFlat, Pass};
 use amethyst::renderer::{Pipeline, Scene};
 use amethyst::renderer::target::{GeometryBuffer};
 use amethyst::gfx_device;
 use amethyst::gfx_device::gfx_types;
+use amethyst::renderer::pass::PassDescription;
 
 use rendering;
 use rendering::{ColorFormat, DepthFormat};
@@ -343,6 +347,14 @@ pub struct MapDrawPass<R: gfx::Resources> {
     tilemap: TileMap<R>,
     pso: gfx::PipelineState<R, pipe::Meta>,
 }
+
+impl <R>Debug for MapDrawPass<R> where R: gfx::Resources {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "MapDrawPass")
+    }
+}
+
+impl <R>PassDescription for MapDrawPass<R> where R: gfx::Resources {}
 
 impl<R: gfx::Resources> MapDrawPass<R> {
     pub fn new<F>(tilemap: TileMap<R>, factory: &mut F) -> MapDrawPass<R>

@@ -38,25 +38,29 @@ impl State for Game {
         use amethyst::renderer::target::ColorBuffer;
 
         world.add_resource::<InputHandler>(InputHandler::new());
-        let factory = assets.get_loader_mut::<gfx_types::Factory>()
-            .expect("Couldn't retrieve factory.");
 
-        let main_target: &Box<ColorBuffer<amethyst::gfx_device::gfx_types::Resources>> = pipe.targets.get("main").unwrap();
+        {
+            let factory = assets.get_loader_mut::<gfx_types::Factory>()
+                .expect("Couldn't retrieve factory.");
 
-        let dimensions = self.cfg.dimensions.unwrap();
-        let target = rendering::Target{
-            color: main_target.color,
-            depth: main_target.depth,
-        };
-        let tilemap_drawer = TileMap::new(&self.map, factory, (dimensions.0 / dimensions.1) as f32, &target);
+            let main_target = pipe.targets.get("main").unwrap() as &Box<amethyst::renderer::Target>;
+            let main_target = main_target.downcast_ref::<ColorBuffer<gfx_types::Resources>>().unwrap();
 
-        let layer = Layer::new("main", vec![
-            Clear::new([0.0, 0.0, 0.0, 1.0]),
-            MapDrawPass::new(tilemap_drawer, factory),
-            DrawFlat::new("main", "main"),
-        ]);
+            let dimensions = self.cfg.dimensions.unwrap();
+            let target = rendering::Target{
+                color: main_target.color.clone(),
+                depth: main_target.output_depth.clone(),
+            };
+            let tilemap_drawer = TileMap::new(&self.map, factory, (dimensions.0 / dimensions.1) as f32, &target);
 
-        pipe.layers.push(layer);
+            let layer = Layer::new("main", vec![
+                Clear::new([0.0, 0.0, 0.0, 1.0]),
+                Box::new(MapDrawPass::new(tilemap_drawer, factory)),
+                DrawFlat::new("main", "main"),
+            ]);
+
+            pipe.layers.push(layer);
+        }
 
         {
             let dim = world.read_resource::<ScreenDimensions>();
@@ -126,7 +130,7 @@ fn main() {
     let map_file = File::open(&Path::new("./resources/map.tmx")).unwrap();
     let map = parse(map_file).unwrap();
 
-    let mut game = Application::build(Game{ map: map, cfg: cfg }, cfg)
+    let mut game = Application::build(Game{ map: map, cfg: cfg.clone() }, cfg)
         .register::<entities::Player>()
         .done();
 
