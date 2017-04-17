@@ -10,8 +10,6 @@ use std::fmt::{Debug, Formatter};
 use amethyst::renderer::pass::{DrawFlat, Pass};
 use amethyst::renderer::{Pipeline, Scene};
 use amethyst::renderer::target::{GeometryBuffer};
-use amethyst::gfx_device;
-use amethyst::gfx_device::gfx_types;
 use amethyst::renderer::pass::PassDescription;
 
 use rendering;
@@ -167,17 +165,15 @@ impl<R: gfx::Resources> TileMapPlane<R> {
         }
     }
 
-    fn prepare_buffers<C>(&mut self, encoder: &mut gfx::Encoder<R, C>, update_data: bool) where C: gfx::CommandBuffer<R> {
+    fn prepare_buffers<C>(&self, encoder: &mut gfx::Encoder<R, C>, update_data: bool) where C: gfx::CommandBuffer<R> {
         if update_data {
             encoder.update_buffer(&self.params.tilemap, &self.data, 0).unwrap();
         }
         if self.proj_dirty {
             encoder.update_constant_buffer(&self.params.projection_cb, &self.proj_stuff);
-            self.proj_dirty = false;
         }
         if self.tm_dirty {
             encoder.update_constant_buffer(&self.params.tilemap_cb, &self.tm_stuff);
-            self.tm_dirty = false;
         }
     }
 
@@ -339,25 +335,25 @@ impl <R: gfx::Resources> TileMap<R> {
     }
 }
 
-pub struct MapDrawPass<R: gfx::Resources> {
+pub struct MapDrawPass<'a, R: gfx::Resources> {
     projection: gfx::handle::Buffer<R, ProjectionStuff>,
     tilemap_stuff: gfx::handle::Buffer<R, TilemapStuff>,
     tilemap_data: gfx::handle::Buffer<R, TileMapData>,
     tilesheet_sampler: gfx::handle::Sampler<R>,
-    tilemap: TileMap<R>,
+    tilemap: &'a TileMap<R>,
     pso: gfx::PipelineState<R, pipe::Meta>,
 }
 
-impl <R>Debug for MapDrawPass<R> where R: gfx::Resources {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+impl <'a, R>Debug for MapDrawPass<'a, R> where R: gfx::Resources {
+    fn fmt(&'a self, f: &'a mut Formatter) -> fmt::Result {
         write!(f, "MapDrawPass")
     }
 }
 
-impl <R>PassDescription for MapDrawPass<R> where R: gfx::Resources {}
+impl <'a, R>PassDescription for MapDrawPass<'a, R> where R: gfx::Resources {}
 
-impl<R: gfx::Resources> MapDrawPass<R> {
-    pub fn new<F>(tilemap: TileMap<R>, factory: &mut F) -> MapDrawPass<R>
+impl<'a, R: gfx::Resources> MapDrawPass<'a, R> {
+    pub fn new<F>(tilemap: &TileMap<R>, factory: &mut F) -> MapDrawPass<'a, R>
         where F: gfx::Factory<R>
     {
         let sampler = factory.create_sampler(
@@ -381,7 +377,7 @@ impl<R: gfx::Resources> MapDrawPass<R> {
     }
 }
 
-impl<R> Pass<R> for MapDrawPass<R>
+impl<'a, R> Pass<R> for MapDrawPass<'a, R>
     where R: gfx::Resources
 {
     type Arg = DrawFlat;
@@ -402,10 +398,9 @@ impl<R> Pass<R> for MapDrawPass<R>
             view: scene.camera.view,
         });
 
-        let tilemap = self.tilemap;
+        let tilemap = &self.tilemap;
 
         tilemap.tilemap_plane.prepare_buffers(encoder, self.tilemap.focus_dirty);
-        tilemap.focus_dirty = false;
 
         encoder.draw(&tilemap.tilemap_plane.slice, &self.pso, &tilemap.tilemap_plane.params);
     }
