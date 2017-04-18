@@ -335,25 +335,25 @@ impl <R: gfx::Resources> TileMap<R> {
     }
 }
 
-pub struct MapDrawPass<'a, R: gfx::Resources> {
+pub struct MapDrawPass<R: gfx::Resources> {
     projection: gfx::handle::Buffer<R, ProjectionStuff>,
     tilemap_stuff: gfx::handle::Buffer<R, TilemapStuff>,
     tilemap_data: gfx::handle::Buffer<R, TileMapData>,
     tilesheet_sampler: gfx::handle::Sampler<R>,
-    tilemap: &'a TileMap<R>,
+    tilemap: &'static TileMap<R>,
     pso: gfx::PipelineState<R, pipe::Meta>,
 }
 
-impl <'a, R>Debug for MapDrawPass<'a, R> where R: gfx::Resources {
-    fn fmt(&'a self, f: &'a mut Formatter) -> fmt::Result {
+impl <R>Debug for MapDrawPass<R> where R: gfx::Resources {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "MapDrawPass")
     }
 }
 
-impl <'a, R>PassDescription for MapDrawPass<'a, R> where R: gfx::Resources {}
+impl <R>PassDescription for MapDrawPass<R> where R: gfx::Resources {}
 
-impl<'a, R: gfx::Resources> MapDrawPass<'a, R> {
-    pub fn new<F>(tilemap: &TileMap<R>, factory: &mut F) -> MapDrawPass<'a, R>
+impl<R: gfx::Resources> MapDrawPass<R> {
+    pub fn new<F>(tilemap: &'static TileMap<R>, factory: &mut F) -> MapDrawPass<R>
         where F: gfx::Factory<R>
     {
         let sampler = factory.create_sampler(
@@ -377,7 +377,7 @@ impl<'a, R: gfx::Resources> MapDrawPass<'a, R> {
     }
 }
 
-impl<'a, R> Pass<R> for MapDrawPass<'a, R>
+impl<R> Pass<R> for MapDrawPass<R>
     where R: gfx::Resources
 {
     type Arg = DrawFlat;

@@ -13,6 +13,7 @@ use amethyst::ecs::components::{Mesh, LocalTransform, Texture, Transform};
 use amethyst::gfx_device::DisplayConfig;
 use amethyst::renderer::{Pipeline, VertexPosNormal};
 use amethyst::gfx_device::gfx_types;
+use amethyst::gfx_device::MainTarget;
 
 use std::path::Path;
 use std::fs::File;
@@ -36,7 +37,6 @@ impl <R>State for Game<R> where R: gfx::Resources {
         use amethyst::ecs::resources::{Camera, InputHandler, Projection, ScreenDimensions};
         use amethyst::renderer::Layer;
         use amethyst::renderer::pass::{Clear, DrawFlat};
-        use amethyst::gfx_device::MainTarget;
         use rendering::{MapDrawPass};
         use amethyst::renderer::target::ColorBuffer;
 
