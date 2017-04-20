@@ -29,6 +29,8 @@ use cgmath::{Transform};
 // of varying sizes based on current screen resolution
 pub const TILEMAP_BUF_LENGTH: usize = 4096;
 
+type Target = amethyst::renderer::target::ColorBuffer<amethyst::gfx_device::gfx_types::Resources>;
+
 // Actual tilemap data that makes up the elements of the UBO.
 // NOTE: It may be a bug, but it appears that
 // [f32;2] won't work as UBO data. Possibly an issue with
@@ -89,7 +91,7 @@ pub struct TileMapPlane<R: gfx::Resources> {
 }
 
 impl<R: gfx::Resources> TileMapPlane<R> {
-    pub fn new<F>(factory: &mut F, tilemap: &tiled::Map, aspect_ratio: f32 , target: &rendering::Target<R>) -> TileMapPlane<R> where F: gfx::Factory<R> {
+    pub fn new<F>(factory: &mut F, tilemap: &tiled::Map, aspect_ratio: f32 , target: &Target) -> TileMapPlane<R> where F: gfx::Factory<R> {
         let half_width = (tilemap.width * tilemap.tile_width) / 2;
         let half_height = (tilemap.height * tilemap.tile_height) / 2;
 
@@ -222,7 +224,7 @@ pub struct TileMap<R> where R: gfx::Resources {
 }
 
 impl <R: gfx::Resources> TileMap<R> {
-    pub fn new<F>(map: &tiled::Map, factory: &mut F, aspect_ratio: f32, target: &rendering::Target<R>) -> TileMap<R>
+    pub fn new<F>(map: &tiled::Map, factory: &mut F, aspect_ratio: f32, target: &Target) -> TileMap<R>
         where F: gfx::Factory<R>
     {
         let mut tiles = Vec::with_capacity((map.width * map.height) as usize);

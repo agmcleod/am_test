@@ -48,11 +48,11 @@ impl <R>State for Game<R> where R: gfx::Resources {
             let main_target = main_target.downcast_ref::<ColorBuffer<R>>().unwrap();
 
             let dimensions = self.cfg.dimensions.unwrap();
-            let target = rendering::Target{
-                color: main_target.color.clone(),
-                depth: main_target.output_depth.clone(),
-            };
-            self.tilemap_drawer = Some(TileMap::new(&self.map, factory, (dimensions.0 / dimensions.1) as f32, &target));
+            // let target = rendering::Target{
+            //     color: main_target.color.clone(),
+            //     depth: main_target.output_depth.clone(),
+            // };
+            self.tilemap_drawer = Some(TileMap::new(&self.map, factory, (dimensions.0 / dimensions.1) as f32, &main_target));
 
             let layer = Layer::new("main", vec![
                 Clear::new([0.0, 0.0, 0.0, 1.0]),
