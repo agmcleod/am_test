@@ -12,8 +12,6 @@ use amethyst::ecs::{World, Join, RunArg, System};
 use amethyst::ecs::components::{Mesh, LocalTransform, Texture, Transform};
 use amethyst::gfx_device::DisplayConfig;
 use amethyst::renderer::{Pipeline, VertexPosNormal};
-use amethyst::gfx_device::gfx_types;
-use amethyst::gfx_device::MainTarget;
 
 use std::path::Path;
 use std::fs::File;
@@ -43,11 +41,11 @@ impl <R>State for Game<R> where R: gfx::Resources {
         world.add_resource::<InputHandler>(InputHandler::new());
 
         {
-            let factory = assets.get_loader_mut::<gfx_types::Factory>()
+            let factory = assets.get_loader_mut::<amethyst::gfx_device::gfx_types::Factory>()
                 .expect("Couldn't retrieve factory.");
 
             let main_target = pipe.targets.get("main").unwrap() as &Box<amethyst::renderer::Target>;
-            let main_target = main_target.downcast_ref::<ColorBuffer<gfx_types::Resources>>().unwrap();
+            let main_target = main_target.downcast_ref::<ColorBuffer<R>>().unwrap();
 
             let dimensions = self.cfg.dimensions.unwrap();
             let target = rendering::Target{
@@ -133,7 +131,7 @@ fn main() {
     let map_file = File::open(&Path::new("./resources/map.tmx")).unwrap();
     let map = parse(map_file).unwrap();
 
-    let mut game = Application::build(Game::<gfx_types::Resources>{ map: map, cfg: cfg.clone(), tilemap_drawer: None, }, cfg)
+    let mut game = Application::build(Game{ map: map, cfg: cfg.clone(), tilemap_drawer: None, }, cfg)
         .register::<entities::Player>()
         .done();
 
