@@ -11,6 +11,7 @@ use amethyst::renderer::pass::{DrawFlat, Pass};
 use amethyst::renderer::{Pipeline, Scene};
 use amethyst::renderer::target::{GeometryBuffer};
 use amethyst::renderer::pass::PassDescription;
+use amethyst::gfx_device::gfx_types;
 
 use rendering;
 use rendering::{ColorFormat, DepthFormat};
@@ -133,7 +134,7 @@ impl<R: gfx::Resources> TileMapPlane<R> {
             tilemap_cb: factory.create_constant_buffer(1),
             tilesheet: (tiles_texture, factory.create_sampler_linear()),
             out_color: target.color.clone(),
-            out_depth: target.depth.clone(),
+            out_depth: target.output_depth.clone(),
         };
 
         // TODO: change the coords here
@@ -190,7 +191,7 @@ impl<R: gfx::Resources> TileMapPlane<R> {
     }
 }
 
-fn populate_tilemap<R>(tilemap: &mut TileMap<R>, map_data: &tiled::Map) where R: gfx::Resources {
+fn populate_tilemap<R>(tilemap: &mut TileMap, map_data: &tiled::Map) where R: gfx::Resources {
     let layers = &map_data.layers;
     for layer in layers {
         for (row, cols) in layer.tiles.iter().enumerate() {
@@ -211,10 +212,10 @@ fn populate_tilemap<R>(tilemap: &mut TileMap<R>, map_data: &tiled::Map) where R:
     }
 }
 
-pub struct TileMap<R> where R: gfx::Resources {
+pub struct TileMap {
     pub tiles: Vec<TileMapData>,
-    pso: gfx::PipelineState<R, pipe::Meta>,
-    tilemap_plane: TileMapPlane<R>,
+    pso: gfx::PipelineState<gfx_types::Resources, pipe::Meta>,
+    tilemap_plane: TileMapPlane<gfx_types::Resources>,
     tile_size: f32,
     tilemap_size: [usize; 2],
     charmap_size: [usize; 2],
@@ -223,9 +224,9 @@ pub struct TileMap<R> where R: gfx::Resources {
     focus_dirty: bool,
 }
 
-impl <R: gfx::Resources> TileMap<R> {
-    pub fn new<F>(map: &tiled::Map, factory: &mut F, aspect_ratio: f32, target: &Target) -> TileMap<R>
-        where F: gfx::Factory<R>
+impl TileMap {
+    pub fn new<F>(map: &tiled::Map, factory: &mut F, aspect_ratio: f32, target: &Target) -> TileMap
+        where F: gfx::Factory<gfx_types::Resources>
     {
         let mut tiles = Vec::with_capacity((map.width * map.height) as usize);
         for _ in 0..(map.width * map.height) {
@@ -342,7 +343,7 @@ pub struct MapDrawPass<R: gfx::Resources> {
     tilemap_stuff: gfx::handle::Buffer<R, TilemapStuff>,
     tilemap_data: gfx::handle::Buffer<R, TileMapData>,
     tilesheet_sampler: gfx::handle::Sampler<R>,
-    tilemap: &'static TileMap<R>,
+    tilemap: &'static TileMap,
     pso: gfx::PipelineState<R, pipe::Meta>,
 }
 
@@ -355,7 +356,7 @@ impl <R>Debug for MapDrawPass<R> where R: gfx::Resources {
 impl <R>PassDescription for MapDrawPass<R> where R: gfx::Resources {}
 
 impl<R: gfx::Resources> MapDrawPass<R> {
-    pub fn new<F>(tilemap: &'static TileMap<R>, factory: &mut F) -> MapDrawPass<R>
+    pub fn new<F>(tilemap: &'static TileMap, factory: &mut F) -> MapDrawPass<R>
         where F: gfx::Factory<R>
     {
         let sampler = factory.create_sampler(

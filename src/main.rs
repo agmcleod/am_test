@@ -12,6 +12,7 @@ use amethyst::ecs::{World, Join, RunArg, System};
 use amethyst::ecs::components::{Mesh, LocalTransform, Texture, Transform};
 use amethyst::gfx_device::DisplayConfig;
 use amethyst::renderer::{Pipeline, VertexPosNormal};
+use amethyst::gfx_device::gfx_types;
 
 use std::path::Path;
 use std::fs::File;
@@ -24,13 +25,13 @@ mod rendering;
 
 use rendering::TileMap;
 
-struct Game<R: gfx::Resources> {
+struct Game {
     map: tiled::Map,
     cfg: DisplayConfig,
-    tilemap_drawer: Option<TileMap<R>>,
+    tilemap_drawer: Option<TileMap>,
 }
 
-impl <R>State for Game<R> where R: gfx::Resources {
+impl State for Game {
     fn on_start(&mut self, world: &mut World, assets: &mut AssetManager, pipe: &mut Pipeline) {
         use amethyst::ecs::resources::{Camera, InputHandler, Projection, ScreenDimensions};
         use amethyst::renderer::Layer;
@@ -45,7 +46,7 @@ impl <R>State for Game<R> where R: gfx::Resources {
                 .expect("Couldn't retrieve factory.");
 
             let main_target = pipe.targets.get("main").unwrap() as &Box<amethyst::renderer::Target>;
-            let main_target = main_target.downcast_ref::<ColorBuffer<R>>().unwrap();
+            let main_target = main_target.downcast_ref::<ColorBuffer<gfx_types::Resources>>().unwrap();
 
             let dimensions = self.cfg.dimensions.unwrap();
             // let target = rendering::Target{
