@@ -9,7 +9,7 @@ use std::fmt::{Debug, Formatter};
 
 use amethyst::renderer::pass::{DrawFlat, Pass};
 use amethyst::renderer::{Pipeline, Scene};
-use amethyst::renderer::target::{GeometryBuffer};
+use amethyst::renderer::target::{ColorBuffer, GeometryBuffer};
 use amethyst::renderer::pass::PassDescription;
 use amethyst::gfx_device::gfx_types;
 
@@ -29,8 +29,6 @@ use cgmath::{Transform};
 // I imagine you would have a max buffer length, with multiple TileMap instances
 // of varying sizes based on current screen resolution
 pub const TILEMAP_BUF_LENGTH: usize = 4096;
-
-type Target = amethyst::renderer::target::ColorBuffer<amethyst::gfx_device::gfx_types::Resources>;
 
 // Actual tilemap data that makes up the elements of the UBO.
 // NOTE: It may be a bug, but it appears that
@@ -72,6 +70,8 @@ gfx_defines!{
     }
 }
 
+type CBTarget = ColorBuffer<gfx_types::Resources>;
+
 impl TileMapData {
     pub fn new_empty() -> TileMapData {
         TileMapData { data: [0.0, 0.0, 0.0, 0.0] }
@@ -81,9 +81,9 @@ impl TileMapData {
     }
 }
 
-pub struct TileMapPlane<R: gfx::Resources> {
-    pub params: pipe::Data<R>,
-    pub slice: gfx::Slice<R>,
+pub struct TileMapPlane {
+    pub params: pipe::Data<gfx_types::Resources>,
+    pub slice: gfx::Slice<gfx_types::Resources>,
     proj_stuff: ProjectionStuff,
     proj_dirty: bool,
     tm_stuff: TilemapStuff,
@@ -91,8 +91,10 @@ pub struct TileMapPlane<R: gfx::Resources> {
     pub data: Vec<TileMapData>,
 }
 
-impl<R: gfx::Resources> TileMapPlane<R> {
-    pub fn new<F>(factory: &mut F, tilemap: &tiled::Map, aspect_ratio: f32 , target: &Target) -> TileMapPlane<R> where F: gfx::Factory<R> {
+impl TileMapPlane {
+    pub fn new<F>(factory: &mut F, tilemap: &tiled::Map, aspect_ratio: f32 , target: &CBTarget) -> TileMapPlane
+    where F: gfx::Factory<gfx_types::Resources>
+    {
         let half_width = (tilemap.width * tilemap.tile_width) / 2;
         let half_height = (tilemap.height * tilemap.tile_height) / 2;
 
@@ -168,7 +170,7 @@ impl<R: gfx::Resources> TileMapPlane<R> {
         }
     }
 
-    fn prepare_buffers<C>(&self, encoder: &mut gfx::Encoder<R, C>, update_data: bool) where C: gfx::CommandBuffer<R> {
+    fn prepare_buffers<C>(&self, encoder: &mut gfx::Encoder<gfx_types::Resources, C>, update_data: bool) where C: gfx::CommandBuffer<gfx_types::Resources> {
         if update_data {
             encoder.update_buffer(&self.params.tilemap, &self.data, 0).unwrap();
         }
@@ -191,7 +193,7 @@ impl<R: gfx::Resources> TileMapPlane<R> {
     }
 }
 
-fn populate_tilemap<R>(tilemap: &mut TileMap, map_data: &tiled::Map) where R: gfx::Resources {
+fn populate_tilemap(tilemap: &mut TileMap, map_data: &tiled::Map) {
     let layers = &map_data.layers;
     for layer in layers {
         for (row, cols) in layer.tiles.iter().enumerate() {
@@ -215,7 +217,7 @@ fn populate_tilemap<R>(tilemap: &mut TileMap, map_data: &tiled::Map) where R: gf
 pub struct TileMap {
     pub tiles: Vec<TileMapData>,
     pso: gfx::PipelineState<gfx_types::Resources, pipe::Meta>,
-    tilemap_plane: TileMapPlane<gfx_types::Resources>,
+    tilemap_plane: TileMapPlane,
     tile_size: f32,
     tilemap_size: [usize; 2],
     charmap_size: [usize; 2],
@@ -225,7 +227,7 @@ pub struct TileMap {
 }
 
 impl TileMap {
-    pub fn new<F>(map: &tiled::Map, factory: &mut F, aspect_ratio: f32, target: &Target) -> TileMap
+    pub fn new<F>(map: &tiled::Map, factory: &mut F, aspect_ratio: f32, target: &CBTarget) -> TileMap
         where F: gfx::Factory<gfx_types::Resources>
     {
         let mut tiles = Vec::with_capacity((map.width * map.height) as usize);
@@ -338,26 +340,26 @@ impl TileMap {
     }
 }
 
-pub struct MapDrawPass<R: gfx::Resources> {
-    projection: gfx::handle::Buffer<R, ProjectionStuff>,
-    tilemap_stuff: gfx::handle::Buffer<R, TilemapStuff>,
-    tilemap_data: gfx::handle::Buffer<R, TileMapData>,
-    tilesheet_sampler: gfx::handle::Sampler<R>,
+pub struct MapDrawPass {
+    projection: gfx::handle::Buffer<gfx_types::Resources, ProjectionStuff>,
+    tilemap_stuff: gfx::handle::Buffer<gfx_types::Resources, TilemapStuff>,
+    tilemap_data: gfx::handle::Buffer<gfx_types::Resources, TileMapData>,
+    tilesheet_sampler: gfx::handle::Sampler<gfx_types::Resources>,
     tilemap: &'static TileMap,
-    pso: gfx::PipelineState<R, pipe::Meta>,
+    pso: gfx::PipelineState<gfx_types::Resources, pipe::Meta>,
 }
 
-impl <R>Debug for MapDrawPass<R> where R: gfx::Resources {
+impl Debug for MapDrawPass {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "MapDrawPass")
     }
 }
 
-impl <R>PassDescription for MapDrawPass<R> where R: gfx::Resources {}
+impl PassDescription for MapDrawPass {}
 
-impl<R: gfx::Resources> MapDrawPass<R> {
-    pub fn new<F>(tilemap: &'static TileMap, factory: &mut F) -> MapDrawPass<R>
-        where F: gfx::Factory<R>
+impl MapDrawPass {
+    pub fn new<F>(tilemap: &'static TileMap, factory: &mut F) -> MapDrawPass
+        where F: gfx::Factory<gfx_types::Resources>
     {
         let sampler = factory.create_sampler(
             gfx::texture::SamplerInfo::new(
@@ -380,19 +382,17 @@ impl<R: gfx::Resources> MapDrawPass<R> {
     }
 }
 
-impl<R> Pass<R> for MapDrawPass<R>
-    where R: gfx::Resources
-{
+impl Pass<gfx_types::Resources> for MapDrawPass {
     type Arg = DrawFlat;
-    type Target = GeometryBuffer<R>;
+    type Target = GeometryBuffer<gfx_types::Resources>;
 
     fn apply<C>(&self,
         _: &DrawFlat,
-        _: &GeometryBuffer<R>,
+        _: &GeometryBuffer<gfx_types::Resources>,
         _: &Pipeline,
-        scene: &Scene<R>,
-        encoder: &mut gfx::Encoder<R, C>)
-    where C: gfx::CommandBuffer<R>
+        scene: &Scene<gfx_types::Resources>,
+        encoder: &mut gfx::Encoder<gfx_types::Resources, C>)
+    where C: gfx::CommandBuffer<gfx_types::Resources>
     {
         encoder.update_constant_buffer(&self.projection, &ProjectionStuff {
             // use identity matrix until i figure out how i want to do map transforms
