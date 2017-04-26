@@ -49,15 +49,12 @@ impl State for Game {
             let main_target = main_target.downcast_ref::<ColorBuffer<gfx_types::Resources>>().unwrap();
 
             let dimensions = self.cfg.dimensions.unwrap();
-            // let target = rendering::Target{
-            //     color: main_target.color.clone(),
-            //     depth: main_target.output_depth.clone(),
-            // };
             self.tilemap_drawer = Some(TileMap::new(&self.map, factory, (dimensions.0 / dimensions.1) as f32, &main_target));
 
+            let tilemap_drawer = &self.tilemap_drawer.unwrap();
             let layer = Layer::new("main", vec![
                 Clear::new([0.0, 0.0, 0.0, 1.0]),
-                Box::new(MapDrawPass::new(&self.tilemap_drawer.unwrap(), factory)),
+                Box::new(MapDrawPass::new(tilemap_drawer, factory)),
                 DrawFlat::new("main", "main"),
             ]);
 
@@ -132,9 +129,10 @@ fn main() {
     let map_file = File::open(&Path::new("./resources/map.tmx")).unwrap();
     let map = parse(map_file).unwrap();
 
-    let mut game = Application::build(Game{ map: map, cfg: cfg.clone(), tilemap_drawer: None, }, cfg)
+    let game = Game{ map: map, cfg: cfg.clone(), tilemap_drawer: None, };
+    let mut app = Application::build(game, cfg)
         .register::<entities::Player>()
         .done();
 
-    game.run();
+    app.run();
 }

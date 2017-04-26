@@ -14,7 +14,6 @@ use amethyst::renderer::pass::PassDescription;
 use amethyst::gfx_device::gfx_types;
 
 use rendering;
-use rendering::{ColorFormat, DepthFormat};
 
 use gfx::traits::FactoryExt;
 use genmesh::{Vertices, Triangulate};
@@ -401,7 +400,7 @@ impl Pass<gfx_types::Resources> for MapDrawPass {
             view: scene.camera.view,
         });
 
-        let tilemap = &self.tilemap;
+        let tilemap = self.tilemap;
 
         tilemap.tilemap_plane.prepare_buffers(encoder, self.tilemap.focus_dirty);
 
